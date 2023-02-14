@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "verlib"
+version = "0.0.1-alpha"
+description = "library for building RPC APIs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE.txt"}
+keywords = ["API", "library", "RPC"]
+authors = [
+  {email = "stexor12@gmail.com"},
+  {name = "Sténio Jacinto"}
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+]
+
+[project.urls]
+repository = "https://github.com/stackswithans/verlib"
