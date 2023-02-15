@@ -19,11 +19,14 @@ classifiers = [
   "Programming Language :: Python"
 ]
 
-dependencies = []
+dependencies = [
+    "schema"
+]
 
 [project.optional-dependencies]
 test = [
   "pytest",
+  "typing_extensions"
 ]
 
 [project.urls]
