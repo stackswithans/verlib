@@ -26,7 +26,8 @@ dependencies = [
 [project.optional-dependencies]
 test = [
   "pytest",
-  "typing_extensions"
+  "typing_extensions", 
+  "pyright"
 ]
 
 [project.urls]
