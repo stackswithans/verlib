@@ -16,5 +16,30 @@ def test_parse_request_works():
 
 
 def test_parse_request_errors_when_missing_jsonrpc_field():
-    req = parse_request("""{"method": "add", "params": [42, 13], "id": 1})""")
+    req = parse_request("""{"method": "add", "params": [42, 13], "id": 1}""")
     assert req == None
+
+
+def test_parse_request_works_when_using_null_and_str_ids():
+    req = parse_request("""{"method": "add", "params": [42, 13], "id": 1}""")
+    assert req == None
+
+
+def test_parse_request_fails_when_using_weird_ids():
+    pass
+
+
+def test_parse_request_works_with_missing_params():
+    pass
+
+
+def test_parse_request_works_with_missing_id():
+    pass
+
+
+def test_parse_request_works_with_named_params():
+    pass
+
+
+def test_parse_request_works_with_missing_id_and_params():
+    pass

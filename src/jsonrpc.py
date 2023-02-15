@@ -21,7 +21,7 @@ request_schema = Schema(
 )
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Request:
     jsonrpc: Literal["2.0"]
     id: int | str | None
@@ -30,12 +30,7 @@ class Request:
 
     @classmethod
     def from_dict(cls, req_dict: dict[str, Any]) -> Self:
-        return cls(
-            req_dict["jsonrpc"],
-            req_dict["id"],
-            req_dict["method"],
-            req_dict["params"],
-        )
+        return cls(**req_dict)
 
 
 def parse_request(req: str) -> Request | None:
