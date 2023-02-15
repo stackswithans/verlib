@@ -5,9 +5,7 @@ from src.jsonrpc import parse_request
 
 def test_parse_request_works():
     req = parse_request(
-        json.dumps(
-            {"jsonrpc": "2.0", "method": "add", "params": [42, 13], "id": 1}
-        )
+        """{"jsonrpc": "2.0", "method": "add", "params": [42, 13], "id": 1}"""
     )
 
     assert req != None
@@ -18,8 +16,5 @@ def test_parse_request_works():
 
 
 def test_parse_request_errors_when_missing_jsonrpc_field():
-    req = parse_request(
-        json.dumps({"method": "add", "params": [42, 13], "id": 1})
-    )
-
+    req = parse_request("""{"method": "add", "params": [42, 13], "id": 1})""")
     assert req == None
