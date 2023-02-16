@@ -5,7 +5,7 @@ from enum import Enum
 import json
 from schema import Schema, And, Or, Optional
 from typing_extensions import Self
-from utils.types import Result, Ok, Err
+from utils.request import Result, Ok, Err
 
 
 JSONValues = int | str | float | list[Any] | dict[str, Any]
