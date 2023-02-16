@@ -1,13 +1,16 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Literal, Any, cast
+from typing import Literal, Any, TypeVar, Generic, cast
+from enum import Enum
+import json
 from schema import Schema, And, Or, Optional
 from typing_extensions import Self
-import json
+from utils.types import Result, Ok, Err
 
 
 JSONValues = int | str | float | list[Any] | dict[str, Any]
 JSONRPCId = int | str | None
+
 
 values_schema = Schema(Or(int, str, float, list, dict))
 
@@ -37,18 +40,34 @@ class Request:
         return cls(**req_dict, is_notification=is_notification)
 
 
-def parse_request(req: str) -> Request | None:
+class ErrorCode(Enum):
+    PARSE_ERROR = -32700
+    INVALID_REQUEST = -32600
+    METHOD_NOT_FOUND = -32601
+    INVALID_PARAMS = -32602
+    INTERNAL_ERROR = -32603
+
+
+T = TypeVar("T", bound=JSONValues | None)
+
+
+@dataclass
+class Error(Generic[T]):
+    code: ErrorCode | int
+    message: str
+    data: T
+
+
+def parse_request(req: str) -> Result[Request, Error[None]]:
 
     try:
         req_dict: dict[str, Any] = json.loads(req)
     except TypeError:
-        return None
+        return Err(Error(ErrorCode.PARSE_ERROR, "Parse error", None))
 
     is_valid_req = request_schema.is_valid(req_dict)
-    # request_schema.validate(req_dict)
 
     if not is_valid_req:
-        # Return appropriate error
-        return None
+        return Err(Error(ErrorCode.INVALID_REQUEST, "Invalid Request", None))
 
-    return Request.from_dict(req_dict)
+    return Ok(Request.from_dict(req_dict))
