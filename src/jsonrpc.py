@@ -8,7 +8,7 @@ from typing_extensions import Self
 from utils.request import Result, Ok, Err
 
 
-JSONValues = int | str | float | list[Any] | dict[str, Any]
+JSONValues = int | str | float | list["JSONValues"] | dict[str, "JSONValues"]
 JSONRPCId = int | str | None
 
 
@@ -71,3 +71,7 @@ def parse_request(req: str) -> Result[Request, Error[None]]:
         return Err(Error(ErrorCode.INVALID_REQUEST, "Invalid Request", None))
 
     return Ok(Request.from_dict(req_dict))
+
+
+class Response(Generic[T]):
+    pass
