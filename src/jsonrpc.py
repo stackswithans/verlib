@@ -1,4 +1,6 @@
 from __future__ import annotations
+import dataclasses
+import abc
 from dataclasses import dataclass
 from typing import Literal, Any, TypeVar, Generic, cast
 from enum import Enum
@@ -8,11 +10,16 @@ from typing_extensions import Self
 from utils.request import Result, Ok, Err
 
 
-JSONValues = int | str | float | list["JSONValues"] | dict[str, "JSONValues"]
+JSONValues = (
+    int | str | float | list["JSONValues"] | dict[str, "JSONValues"] | None
+)
 JSONRPCId = int | str | None
 
+V = TypeVar("V", bound=JSONValues)
 
-values_schema = Schema(Or(int, str, float, list, dict))
+E = TypeVar("E", bound=JSONValues | None)
+
+values_schema = Schema(Or(int, str, float, list, dict, lambda x: x is None))
 
 request_schema = Schema(
     {
@@ -48,14 +55,80 @@ class ErrorCode(Enum):
     INTERNAL_ERROR = -32603
 
 
-T = TypeVar("T", bound=JSONValues | None)
+@dataclass
+class Error(Generic[E]):
+    code: ErrorCode | int
+    message: str
+    data: E
 
 
 @dataclass
-class Error(Generic[T]):
-    code: ErrorCode | int
-    message: str
-    data: T
+class Response(abc.ABC, Generic[V, E]):
+    id: JSONRPCId
+    jsonrpc: Literal["2.0"]
+
+    def __init__(self, id: JSONRPCId):
+        self.id = id
+        self.jsonrpc = "2.0"
+
+    def to_dict(self) -> dict[str, JSONValues]:
+        return dataclasses.asdict(self)
+
+    @abc.abstractmethod
+    def err(self) -> Error[E]:
+        ...
+
+    @abc.abstractmethod
+    def success(self) -> V:
+        ...
+
+    @abc.abstractmethod
+    def is_err(self) -> Error[E]:
+        ...
+
+    @abc.abstractmethod
+    def is_success(self) -> V:
+        ...
+
+
+@dataclass
+class OkRes(Response[V, None]):
+    result: V
+
+    def err(self) -> Error[None]:
+        raise TypeError("Response contains a success result!")
+
+    def success(self) -> V:
+        return self.result
+
+    def is_err(self) -> bool:
+        return False
+
+    def is_success(self) -> bool:
+        return True
+
+
+@dataclass
+class ErrRes(Response[None, E]):
+    error: Error[E]
+
+    def __init__(self, id: JSONRPCId, error: Error[E]):
+        super().__init__(id)
+        if error.code in (ErrorCode.PARSE_ERROR, ErrorCode.INVALID_REQUEST):
+            self.id = None
+        self.error = error
+
+    def err(self) -> Error[E]:
+        return self.error
+
+    def success(self) -> None:
+        raise TypeError("Response is an error!")
+
+    def is_err(self) -> bool:
+        return True
+
+    def is_success(self) -> bool:
+        return False
 
 
 def parse_request(req: str) -> Result[Request, Error[None]]:
@@ -71,7 +144,3 @@ def parse_request(req: str) -> Result[Request, Error[None]]:
         return Err(Error(ErrorCode.INVALID_REQUEST, "Invalid Request", None))
 
     return Ok(Request.from_dict(req_dict))
-
-
-class Response(Generic[T]):
-    pass
