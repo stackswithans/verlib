@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 import abc
 from dataclasses import dataclass
-from typing import Literal, Any, TypeVar, Generic, cast
+from typing import Literal, TypeAlias, Any, TypeVar, Generic, cast
 from enum import Enum
 import json
 from schema import Schema, And, Or, Optional
@@ -13,11 +13,13 @@ from utils.request import Result, Ok, Err
 JSONValues = (
     int | str | float | list["JSONValues"] | dict[str, "JSONValues"] | None
 )
+
+
 JSONRPCId = int | str | None
 
-V = TypeVar("V", bound=JSONValues)
+V = TypeVar("V")
 
-E = TypeVar("E", bound=JSONValues | None)
+E = TypeVar("E")
 
 values_schema = Schema(Or(int, str, float, list, dict, lambda x: x is None))
 
@@ -63,42 +65,19 @@ class Error(Generic[E]):
 
 
 @dataclass
-class Response(abc.ABC, Generic[V, E]):
+class OkRes(Generic[V]):
     id: JSONRPCId
-    jsonrpc: Literal["2.0"]
-
-    def __init__(self, id: JSONRPCId):
-        self.id = id
-        self.jsonrpc = "2.0"
-
-    def to_dict(self) -> dict[str, JSONValues]:
-        return dataclasses.asdict(self)
-
-    @abc.abstractmethod
-    def err(self) -> Error[E]:
-        ...
-
-    @abc.abstractmethod
-    def success(self) -> V:
-        ...
-
-    @abc.abstractmethod
-    def is_err(self) -> Error[E]:
-        ...
-
-    @abc.abstractmethod
-    def is_success(self) -> V:
-        ...
-
-
-@dataclass
-class OkRes(Response[V, None]):
     result: V
+    jsonrpc: Literal["2.0"] = "2.0"
 
-    def err(self) -> Error[None]:
-        raise TypeError("Response contains a success result!")
+    def __init__(self, id: JSONRPCId, result: V):
+        self.id = id
+        self.result = result
 
-    def success(self) -> V:
+    def err_data(self) -> None:
+        return None
+
+    def result_data(self) -> V:
         return self.result
 
     def is_err(self) -> bool:
@@ -107,28 +86,39 @@ class OkRes(Response[V, None]):
     def is_success(self) -> bool:
         return True
 
+    def to_dict(self) -> dict[str, JSONValues]:
+        return dataclasses.asdict(self)
+
 
 @dataclass
-class ErrRes(Response[None, E]):
+class ErrRes(Generic[E]):
+    id: JSONRPCId
     error: Error[E]
+    jsonrpc: Literal["2.0"] = "2.0"
 
     def __init__(self, id: JSONRPCId, error: Error[E]):
-        super().__init__(id)
+        self.id = id
         if error.code in (ErrorCode.PARSE_ERROR, ErrorCode.INVALID_REQUEST):
             self.id = None
         self.error = error
 
-    def err(self) -> Error[E]:
+    def err_data(self) -> Error[E]:
         return self.error
 
-    def success(self) -> None:
-        raise TypeError("Response is an error!")
+    def result_data(self) -> None:
+        return None
 
     def is_err(self) -> bool:
         return True
 
     def is_success(self) -> bool:
         return False
+
+    def to_dict(self) -> dict[str, JSONValues]:
+        return dataclasses.asdict(self)
+
+
+Response = OkRes[V] | ErrRes[E]
 
 
 def parse_request(req: str) -> Result[Request, Error[None]]:

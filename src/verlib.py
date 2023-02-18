@@ -37,8 +37,10 @@ class VerModule:
 
         return verproc_decorator
 
-    def invoke(self, name: str, params: VerProcParams) -> Response[JSONValues]:
-        return 0
+    def invoke(
+        self, name: str, params: VerProcParams
+    ) -> Response[JSONValues, None]:
+        return cast(Any, 0)
 
 
 @dataclass
