@@ -55,7 +55,7 @@ class VerProcedure:
 
         # No parameters, just call the function
         # TODO: Make sure function can be called with 'null' arg
-        if params is None:
+        if params is None or len(params) == 0:
             return Ok(self._fn())
 
         args, kwargs = ([], {})
@@ -106,7 +106,7 @@ class VerModule:
     def contains_proc(self, name: str) -> bool:
         return name in self._procedures
 
-    def invoke(
+    def call_procedure(
         self,
         proc_name: str,
         params: list[JSONValues] | dict[str, JSONValues] | None,
@@ -150,7 +150,7 @@ class VerLib:
         else:
             return (None, "")
 
-    def invoke_proc(self, req: Request) -> Response[JSONValues, None]:
+    def execute_rpc(self, req: Request) -> Response[JSONValues, None]:
         # Check if module and method both exist
         module, proc_name = self._resolve_proc(req.method)
         if not module or not module.contains_proc(proc_name):
@@ -163,7 +163,7 @@ class VerLib:
                 ),
             )
 
-        result: Result[JSONValues, VerProcErr] = module.invoke(
+        result: Result[JSONValues, VerProcErr] = module.call_procedure(
             proc_name, req.params
         )
         if result.is_ok():

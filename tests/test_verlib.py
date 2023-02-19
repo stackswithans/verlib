@@ -152,26 +152,26 @@ def test_vermodule_contains_proc(vermodule: VerModule):
     assert vermodule.contains_proc("foo")
 
 
-def test_vermodule_invoke(test_module: VerModule):
-    assert test_module.invoke("foo", None).unwrap() == 1
-    assert test_module.invoke("foo", []).unwrap() == 1
-    assert test_module.invoke("add", [5, 2]).unwrap() == 7
-    assert test_module.invoke("add", {"a": 4, "b": 4}).unwrap() == 8
+def test_vermodule_call_procedure(test_module: VerModule):
+    assert test_module.call_procedure("foo", None).unwrap() == 1
+    assert test_module.call_procedure("foo", []).unwrap() == 1
+    assert test_module.call_procedure("add", [5, 2]).unwrap() == 7
+    assert test_module.call_procedure("add", {"a": 4, "b": 4}).unwrap() == 8
 
 
-def test_vermodule_invoke_with_bad_args(test_module: VerModule):
-    result = test_module.invoke("foo", ["a"])
+def test_vermodule_call_procedure_with_bad_args(test_module: VerModule):
+    result = test_module.call_procedure("foo", ["a"])
     assert result.is_err()
     assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
 
-    result = test_module.invoke("add", None)
+    result = test_module.call_procedure("add", None)
     assert result.is_err()
     assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
 
-    result = test_module.invoke("add", [5])
+    result = test_module.call_procedure("add", [5])
     assert result.is_err()
     assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
 
-    result = test_module.invoke("add", {"a": 5, "b": 4, "c": 8})
+    result = test_module.call_procedure("add", {"a": 5, "b": 4, "c": 8})
     assert result.is_err()
     assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
