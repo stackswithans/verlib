@@ -57,6 +57,13 @@ class ErrorCode(Enum):
     INTERNAL_ERROR = -32603
 
 
+class ErrorMsg(Enum):
+    METHOD_NOT_FOUND = "The procedure '{0}' was not found on the server."
+
+    def format(self, *args: Any, **kwargs: Any) -> str:
+        return self.value.format(args, kwargs)
+
+
 @dataclass
 class Error(Generic[E]):
     code: ErrorCode | int

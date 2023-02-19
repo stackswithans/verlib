@@ -139,3 +139,16 @@ def test_err_res_works_correctly():
     assert error.code == -1223
     assert error.message == "Um erro losco"
     assert error.data is None
+
+
+def test_err_res_sets_id_to_null():
+    res: Response[JSONValues, JSONValues] = ErrRes(
+        1, Error(ErrorCode.PARSE_ERROR, "Um erro losco", None)
+    )
+
+    assert res.id is None
+    res = ErrRes(
+        "1", Error(ErrorCode.INVALID_REQUEST, "Outro erro losco", None)
+    )
+
+    assert res.id is None

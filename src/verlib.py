@@ -1,8 +1,20 @@
 from dataclasses import dataclass, field
+import inspect
+from enum import Enum
+from inspect import Signature, BoundArguments
 from typing import Any, Callable, ParamSpec, TypeVar, cast
 from typing_extensions import TypeVarTuple, Unpack
-from src.jsonrpc import Request, Response, Error, JSONValues
-from utils.request import Result, Ok, Err
+from src.jsonrpc import (
+    Error,
+    ErrorCode,
+    ErrorMsg,
+    JSONValues,
+    Request,
+    Response,
+    OkRes,
+    ErrRes,
+)
+from utils.request import Err, Ok, Result
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=JSONValues)
@@ -12,12 +24,42 @@ VerProc = Callable[P, T]
 VerProcParams = JSONValues
 
 
+class VerProcErr(Enum):
+    INVALID_PARAMS = 0
+
+
+@dataclass
+class VerProcedure:
+    name: str
+    _fn: Callable[..., JSONValues]
+    _signature: Signature
+
+    def call(
+        self, params: list[JSONValues] | dict[str, JSONValues] | None
+    ) -> Result[JSONValues, VerProcErr]:
+
+        # No parameters, just call the function
+        # TODO: Make sure function can be called with 'null' arg
+        if params is None:
+            return Ok(self._fn())
+
+        args, kwargs = ([], {})
+        match params:
+            case list(pos_params):
+                args = pos_params
+            case dict(dict_params):
+                kwargs = dict_params
+        try:
+            ba = self._signature.bind(*args, **kwargs)
+            return Ok(self._fn(*ba.args, **ba.kwargs))
+        except TypeError:
+            return Err(VerProcErr.INVALID_PARAMS)
+
+
 @dataclass
 class VerModule:
     name: str
-    _procedures: dict[str, Callable[..., JSONValues]] = field(
-        default_factory=dict
-    )
+    _procedures: dict[str, VerProcedure] = field(default_factory=dict)
 
     def __init__(self, name: str):
         self.name = name
@@ -32,15 +74,18 @@ class VerModule:
                     f"A procedure with the name '{proc_name}' has already been registered to the module"
                 )
 
-            self._procedures[proc_name] = procedure
+            self.register_proc(
+                VerProcedure(name, procedure, inspect.signature(procedure))
+            )
             return procedure
 
         return verproc_decorator
 
-    def invoke(
-        self, name: str, params: VerProcParams
-    ) -> Response[JSONValues, None]:
-        return cast(Any, 0)
+    def get_proc(self, name: str) -> VerProcedure | None:
+        return self._procedures.get(name)
+
+    def register_proc(self, proc: VerProcedure):
+        self._procedures[proc.name] = proc
 
 
 @dataclass
@@ -69,29 +114,40 @@ class VerLib:
                     f"A procedure with the name '{proc_name}' has already been registered to the libray instance"
                 )
 
-            self._ver_module._procedures[proc_name] = procedure
+            self._ver_module.register_proc(
+                VerProcedure(name, procedure, inspect.signature(procedure))
+            )
             return procedure
 
         return verproc_decorator
 
-    def _resolve_method(self, name: str) -> VerProc | None:
+    def _find_procedure(self, name: str) -> VerProcedure | None:
         components = name.split(".")
         if len(components) == 1:
-            return self._ver_module._procedures.get(name)
+            return self._ver_module.get_proc(name)
         elif len(components) == 2:
-            return cast(
-                VerModule, self._modules.get(components[0])
-            )._procedures.get(name)
+            return cast(VerModule, self._modules.get(components[0])).get_proc(
+                name
+            )
         else:
             return None
 
-    def invoke(self, req: Request) -> Response[JSONValues, None]:
-        # 1. Check if module and method both exist
-        method = self._resolve_method(req.method)
-        if not method:
-            # Return METHOD_NOT_FOUND ERROR
-            return cast(Any, None)
-        # 2. Check params (arity, type and name)
-        # 3. Return result of function invocation params (arity, type and name)
+    def invoke_proc(self, req: Request) -> Response[JSONValues, None]:
+        # Check if module and method both exist
+        proc = self._find_procedure(req.method)
+        if not proc:
+            return ErrRes(
+                req.id,
+                Error(
+                    ErrorCode.METHOD_NOT_FOUND,
+                    ErrorMsg.METHOD_NOT_FOUND.format(req.method),
+                    None,
+                ),
+            )
 
-        return cast(Any, None)
+        result: Result[JSONValues, VerProcErr] = proc.call(req.params)
+        if result.is_ok():
+            ignore_result: bool = req.is_notification
+            return OkRes(req.id, result.unwrap() if not ignore_result else None)
+
+        return ErrRes(req.id, Error(-1, "", None))
