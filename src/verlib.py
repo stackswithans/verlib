@@ -51,9 +51,9 @@ class VerProcedure:
                 kwargs = dict_params
         try:
             ba = self._signature.bind(*args, **kwargs)
-            return Ok(self._fn(*ba.args, **ba.kwargs))
         except TypeError:
             return Err(VerProcErr.INVALID_PARAMS)
+        return Ok(self._fn(*ba.args, **ba.kwargs))
 
 
 @dataclass
@@ -64,78 +64,80 @@ class VerModule:
     def __init__(self, name: str):
         self.name = name
 
+    def _register_proc(self, proc: VerProcedure):
+        self._procedures[proc.name] = proc
+
     def verproc(
         self, name: str = ""
     ) -> Callable[[VerProc[P, T]], VerProc[P, T]]:
         def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
             proc_name = name if name != "" else procedure.__name__
             if proc_name in self._procedures:
-                raise Exception(
+                raise TypeError(
                     f"A procedure with the name '{proc_name}' has already been registered to the module"
                 )
 
-            self.register_proc(
+            self._register_proc(
                 VerProcedure(name, procedure, inspect.signature(procedure))
             )
             return procedure
 
         return verproc_decorator
 
-    def get_proc(self, name: str) -> VerProcedure | None:
-        return self._procedures.get(name)
+    def contains_proc(self, name: str) -> bool:
+        return name in self._procedures
 
-    def register_proc(self, proc: VerProcedure):
-        self._procedures[proc.name] = proc
+    def invoke(
+        self,
+        proc_name: str,
+        params: list[JSONValues] | dict[str, JSONValues] | None,
+    ) -> Result[JSONValues, VerProcErr]:
+        return self._procedures[proc_name].call(params)
 
 
 @dataclass
 class VerLib:
     name: str
-    _modules: dict[str, VerModule] = field(default_factory=dict)
+    _modules: dict[str, VerModule]
 
     def __init__(self, name: str):
         self.name = name
         self._ver_module: VerModule = VerModule("main")
+        self._modules = {}
 
     def declare_module(self, module: VerModule):
         mod_name = module.name
-        if self._modules[mod_name] in self._modules:
-            raise Exception(
+        if mod_name in self._modules:
+            raise TypeError(
                 f"A module with the name '{mod_name}' has already be registered to the library instance"
             )
+        self._modules[mod_name] = module
 
     def verproc(
         self, name: str = ""
     ) -> Callable[[VerProc[P, T]], VerProc[P, T]]:
         def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
-            proc_name = name if name != "" else procedure.__name__
-            if proc_name in self._ver_module._procedures:
-                raise Exception(
-                    f"A procedure with the name '{proc_name}' has already been registered to the libray instance"
-                )
-
-            self._ver_module.register_proc(
-                VerProcedure(name, procedure, inspect.signature(procedure))
-            )
+            self._ver_module.verproc(name)(procedure)
             return procedure
 
         return verproc_decorator
 
-    def _find_procedure(self, name: str) -> VerProcedure | None:
+    def _resolve_proc(self, name: str) -> tuple[VerModule | None, str]:
         components = name.split(".")
         if len(components) == 1:
-            return self._ver_module.get_proc(name)
+            return (self._ver_module, components[0])
         elif len(components) == 2:
-            return cast(VerModule, self._modules.get(components[0])).get_proc(
-                name
+            return (
+                self._modules.get(components[0]),
+                components[1],
             )
         else:
-            return None
+            return (None, "")
 
     def invoke_proc(self, req: Request) -> Response[JSONValues, None]:
         # Check if module and method both exist
-        proc = self._find_procedure(req.method)
-        if not proc:
+        module, proc_name = self._resolve_proc(req.method)
+        if not module or not module.contains_proc(proc_name):
             return ErrRes(
                 req.id,
                 Error(
@@ -145,7 +147,9 @@ class VerLib:
                 ),
             )
 
-        result: Result[JSONValues, VerProcErr] = proc.call(req.params)
+        result: Result[JSONValues, VerProcErr] = module.invoke(
+            proc_name, req.params
+        )
         if result.is_ok():
             ignore_result: bool = req.is_notification
             return OkRes(req.id, result.unwrap() if not ignore_result else None)
