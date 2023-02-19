@@ -1,5 +1,5 @@
 import pytest
-from src.verlib import VerLib, VerModule
+from src.verlib import VerLib, VerModule, VerProcErr
 
 
 @pytest.fixture
@@ -10,6 +10,19 @@ def verlib() -> VerLib:
 @pytest.fixture
 def vermodule() -> VerModule:
     return VerModule("test_module")
+
+
+@pytest.fixture
+def test_module(vermodule: VerModule) -> VerModule:
+    @vermodule.verproc
+    def foo():
+        return 1
+
+    @vermodule.verproc
+    def add(a: int, b: int) -> int:
+        return a + b
+
+    return vermodule
 
 
 def test_verlib_created_normally(verlib: VerLib):
@@ -137,3 +150,28 @@ def test_vermodule_contains_proc(vermodule: VerModule):
         return 1
 
     assert vermodule.contains_proc("foo")
+
+
+def test_vermodule_invoke(test_module: VerModule):
+    assert test_module.invoke("foo", None).unwrap() == 1
+    assert test_module.invoke("foo", []).unwrap() == 1
+    assert test_module.invoke("add", [5, 2]).unwrap() == 7
+    assert test_module.invoke("add", {"a": 4, "b": 4}).unwrap() == 8
+
+
+def test_vermodule_invoke_with_bad_args(test_module: VerModule):
+    result = test_module.invoke("foo", ["a"])
+    assert result.is_err()
+    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+
+    result = test_module.invoke("add", None)
+    assert result.is_err()
+    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+
+    result = test_module.invoke("add", [5])
+    assert result.is_err()
+    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+
+    result = test_module.invoke("add", {"a": 5, "b": 4, "c": 8})
+    assert result.is_err()
+    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS

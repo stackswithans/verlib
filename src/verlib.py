@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 import inspect
 from enum import Enum
-from inspect import Signature, BoundArguments
-from typing import Any, Callable, ParamSpec, TypeVar, cast
+from inspect import Signature, BoundArguments, Parameter
+from typing import Any, Callable, ParamSpec, TypeVar, Sized, cast
 from typing_extensions import TypeVarTuple, Unpack
 from src.jsonrpc import (
     Error,
@@ -37,6 +37,21 @@ class VerProcedure:
     def call(
         self, params: list[JSONValues] | dict[str, JSONValues] | None
     ) -> Result[JSONValues, VerProcErr]:
+
+        pos_params_len = len(
+            tuple(
+                filter(
+                    lambda p: p.kind == Parameter.POSITIONAL_OR_KEYWORD,
+                    self._signature.parameters.values(),
+                )
+            )
+        )
+
+        if params is None and pos_params_len > 0:
+            return Err(VerProcErr.INVALID_PARAMS)
+
+        if params is not None and len(params) < pos_params_len:
+            return Err(VerProcErr.INVALID_PARAMS)
 
         # No parameters, just call the function
         # TODO: Make sure function can be called with 'null' arg
