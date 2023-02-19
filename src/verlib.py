@@ -59,30 +59,34 @@ class VerProcedure:
 @dataclass
 class VerModule:
     name: str
-    _procedures: dict[str, VerProcedure] = field(default_factory=dict)
+    _procedures: dict[str, VerProcedure]
 
     def __init__(self, name: str):
         self.name = name
+        self._procedures = {}
 
     def _register_proc(self, proc: VerProcedure):
         self._procedures[proc.name] = proc
 
     def verproc(
-        self, name: str = ""
-    ) -> Callable[[VerProc[P, T]], VerProc[P, T]]:
+        self, fn: VerProc[P, T] | None = None, *, name: str = ""
+    ) -> Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]:
         def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
             proc_name = name if name != "" else procedure.__name__
             if proc_name in self._procedures:
                 raise TypeError(
-                    f"A procedure with the name '{proc_name}' has already been registered to the module"
+                    f"A procedure with the name '{proc_name}' has already been registered to the module '{self.name}'"
                 )
 
             self._register_proc(
-                VerProcedure(name, procedure, inspect.signature(procedure))
+                VerProcedure(proc_name, procedure, inspect.signature(procedure))
             )
             return procedure
 
-        return verproc_decorator
+        if fn is None:
+            return verproc_decorator
+        else:
+            return verproc_decorator(fn)
 
     def contains_proc(self, name: str) -> bool:
         return name in self._procedures
@@ -102,30 +106,27 @@ class VerLib:
 
     def __init__(self, name: str):
         self.name = name
-        self._ver_module: VerModule = VerModule("main")
+        self._default_module: VerModule = VerModule("_default_")
         self._modules = {}
 
     def declare_module(self, module: VerModule):
         mod_name = module.name
         if mod_name in self._modules:
             raise TypeError(
-                f"A module with the name '{mod_name}' has already be registered to the library instance"
+                f"A module with the name '{mod_name}' has already been declared"
             )
         self._modules[mod_name] = module
 
     def verproc(
-        self, name: str = ""
-    ) -> Callable[[VerProc[P, T]], VerProc[P, T]]:
-        def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
-            self._ver_module.verproc(name)(procedure)
-            return procedure
+        self, fn: VerProc[P, T] | None = None, *, name: str = ""
+    ) -> Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]:
 
-        return verproc_decorator
+        return self._default_module.verproc(fn, name=name)
 
     def _resolve_proc(self, name: str) -> tuple[VerModule | None, str]:
         components = name.split(".")
         if len(components) == 1:
-            return (self._ver_module, components[0])
+            return (self._default_module, components[0])
         elif len(components) == 2:
             return (
                 self._modules.get(components[0]),
