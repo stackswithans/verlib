@@ -240,3 +240,10 @@ def test_verlib_proc_call_notification(test_lib: VerLib):
     res = test_lib.execute_rpc(Request(method="foo"))
     assert res.is_success()
     assert res.result_data() is None
+
+
+def test_verlib_module_proc_call_propagates_error(test_lib: VerLib):
+    with pytest.raises(TypeError):
+        test_lib.execute_rpc(
+            Request(method="test_module.add", id=1, params=[None, None])
+        )
