@@ -1,6 +1,7 @@
 import pytest
 from src.verlib import VerLib, VerModule, VerProcErr
-from src.jsonrpc import Request
+from src.jsonrpc import Request, Error
+from typing import cast
 
 
 @pytest.fixture
@@ -24,6 +25,17 @@ def test_module(vermodule: VerModule) -> VerModule:
         return a + b
 
     return vermodule
+
+
+@pytest.fixture
+def test_lib(verlib: VerLib, test_module: VerModule) -> VerLib:
+    @verlib.verproc
+    def foo():
+        return 1
+
+    verlib.declare_module(test_module)
+
+    return verlib
 
 
 @pytest.fixture
@@ -188,5 +200,43 @@ def test_vermodule_call_procedure_error_propagates(test_module: VerModule):
         test_module.call_procedure("add", [None, None])
 
 
-def test_verlib_execute_rpc(verlib: VerLib):
-    pass
+def test_verlib_execute_rpc(test_lib: VerLib, dummy_req: Request):
+    res = test_lib.execute_rpc(dummy_req)
+    assert res.is_success()
+    assert res.id == 1
+    assert res.jsonrpc == "2.0"
+    assert res.result_data() == 1
+
+
+def test_verlib_module_proc_call(test_lib: VerLib):
+    res = test_lib.execute_rpc(Request(method="test_module.foo", id=1))
+    assert res.is_success()
+    assert res.result_data() == 1
+
+    res = test_lib.execute_rpc(
+        Request(method="test_module.add", id=1, params=[2, 2])
+    )
+    assert res.is_success()
+    assert res.result_data() == 4
+
+
+def test_verlib_module_proc_call_with_invalid_params(test_lib: VerLib):
+    res = test_lib.execute_rpc(Request(method="test_module.add", id=1))
+    assert res.is_err()
+    err: Error[None] = cast(Error, res.err_data())
+    assert err.code == -32602
+    assert err.message == "Invalid method parameter(s)."
+
+
+def test_verlib_err_on_non_existing_method(test_lib: VerLib):
+    res = test_lib.execute_rpc(Request(method="baz", id=1))
+    assert res.is_err()
+    err: Error[None] = cast(Error, res.err_data())
+    assert err.code == -32601
+    assert err.message == "The procedure 'baz' was not found on the server."
+
+
+def test_verlib_proc_call_notification(test_lib: VerLib):
+    res = test_lib.execute_rpc(Request(method="foo"))
+    assert res.is_success()
+    assert res.result_data() is None

@@ -3,7 +3,6 @@ import inspect
 from enum import Enum
 from inspect import Signature, BoundArguments, Parameter
 from typing import Any, Callable, ParamSpec, TypeVar, Sized, cast
-from typing_extensions import TypeVarTuple, Unpack
 from src.jsonrpc import (
     Error,
     ErrorCode,
@@ -166,8 +165,20 @@ class VerLib:
         result: Result[JSONValues, VerProcErr] = module.call_procedure(
             proc_name, req.params
         )
+
+        ignore_result: bool = req.is_notification
         if result.is_ok():
-            ignore_result: bool = req.is_notification
             return OkRes(req.id, result.unwrap() if not ignore_result else None)
+
+        match result.unwrap_err():
+            case VerProcErr.INVALID_PARAMS:
+                return ErrRes(
+                    req.id,
+                    Error(
+                        ErrorCode.INVALID_PARAMS,
+                        ErrorMsg.INVALID_PARAMS.value,
+                        None,
+                    ),
+                )
 
         return ErrRes(req.id, Error(-1, "", None))

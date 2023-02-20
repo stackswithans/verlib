@@ -3,7 +3,7 @@ import dataclasses
 import abc
 from dataclasses import dataclass
 from typing import Literal, TypeAlias, Any, TypeVar, Generic, cast
-from enum import Enum
+from enum import Enum, IntEnum
 import json
 from schema import Schema, And, Or, Optional
 from typing_extensions import Self
@@ -59,7 +59,7 @@ class Request:
         return cls(**req_dict)
 
 
-class ErrorCode(Enum):
+class ErrorCode(IntEnum):
     PARSE_ERROR = -32700
     INVALID_REQUEST = -32600
     METHOD_NOT_FOUND = -32601
@@ -69,9 +69,10 @@ class ErrorCode(Enum):
 
 class ErrorMsg(Enum):
     METHOD_NOT_FOUND = "The procedure '{0}' was not found on the server."
+    INVALID_PARAMS = "Invalid method parameter(s)."
 
     def format(self, *args: Any, **kwargs: Any) -> str:
-        return self.value.format(args, kwargs)
+        return self.value.format(*args, **kwargs)
 
 
 @dataclass
