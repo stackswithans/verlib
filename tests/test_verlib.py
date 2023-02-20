@@ -1,5 +1,6 @@
 import pytest
 from src.verlib import VerLib, VerModule, VerProcErr
+from src.jsonrpc import Request
 
 
 @pytest.fixture
@@ -23,6 +24,11 @@ def test_module(vermodule: VerModule) -> VerModule:
         return a + b
 
     return vermodule
+
+
+@pytest.fixture
+def dummy_req() -> Request:
+    return Request(id=1, method="foo")
 
 
 def test_verlib_created_normally(verlib: VerLib):
@@ -175,3 +181,12 @@ def test_vermodule_call_procedure_with_bad_args(test_module: VerModule):
     result = test_module.call_procedure("add", {"a": 5, "b": 4, "c": 8})
     assert result.is_err()
     assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+
+
+def test_vermodule_call_procedure_error_propagates(test_module: VerModule):
+    with pytest.raises(TypeError):
+        test_module.call_procedure("add", [None, None])
+
+
+def test_verlib_execute_rpc(verlib: VerLib):
+    pass

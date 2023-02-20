@@ -16,6 +16,7 @@ JSONValues = (
 
 
 JSONRPCId = int | str | None
+JSONRPCParams = dict[str, JSONValues] | list[JSONValues] | None
 
 V = TypeVar("V")
 
@@ -37,16 +38,25 @@ request_schema = Schema(
 
 @dataclass(kw_only=True)
 class Request:
-    jsonrpc: Literal["2.0"]
-    id: int | str | None = None
+    jsonrpc: Literal["2.0"] = "2.0"
     method: str
-    params: dict[str, JSONValues] | list[JSONValues] | None = None
-    is_notification: bool = False
+    is_notification: bool
+    id: int | str | None = None
+    params: JSONRPCParams = None
+
+    def __init__(
+        self, *, method: str, id: JSONRPCId = None, params: JSONRPCParams = None
+    ):
+        self.method = method
+        self.id = id
+        self.params = params
+        self.is_notification = id is None
 
     @classmethod
     def from_dict(cls, req_dict: dict[str, Any]) -> Self:
-        is_notification = req_dict.get("id") is None
-        return cls(**req_dict, is_notification=is_notification)
+        request_schema.validate(req_dict)
+        req_dict.pop("jsonrpc", None)
+        return cls(**req_dict)
 
 
 class ErrorCode(Enum):
