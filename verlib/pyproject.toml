@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "verlib"
+version = "0.1.0"
+description = "library for building RPC APIs"
+authors = ["stackswithans <stexor12@gmail.com>"]
+readme = "README.md"
+license = "../LICENSE.txt"
+keywords = ["API", "library", "RPC"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+schema = "^0.7.5"
+
+[tool.poetry.group.dev.dependencies]
+pyright = "^1.1.294"
+pytest = "^7.2.1"
+typing-extensions = "^4.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

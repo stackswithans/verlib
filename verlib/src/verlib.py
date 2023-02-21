@@ -13,7 +13,7 @@ from src.jsonrpc import (
     OkRes,
     ErrRes,
 )
-from utils.request import Err, Ok, Result
+from utils.result import Err, Ok, Result
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=JSONValues)

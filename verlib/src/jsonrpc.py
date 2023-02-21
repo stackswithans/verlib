@@ -7,7 +7,7 @@ from enum import Enum, IntEnum
 import json
 from schema import Schema, And, Or, Optional
 from typing_extensions import Self
-from utils.request import Result, Ok, Err
+from utils.result import Result, Ok, Err
 
 
 JSONValues = (
