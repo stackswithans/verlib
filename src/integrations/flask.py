@@ -1,27 +1,29 @@
 from src.verlib import VerLib
 from src.jsonrpc import Request, ErrRes, OkRes
-import jsonrpc
+import src.jsonrpc as jsonrpc
 import typing
-from flask import Flask
+from flask import Flask, request
 import flask
 
 
 class FlaskVerLib:
-    def __init__(self, verlib: VerLib, api_url="api/"):
+    def __init__(self, verlib: VerLib, api_url="/verlib"):
         self._verlib: VerLib = verlib
         self.api_url = api_url
 
     def init_app(self, app: Flask):
-        app.route(self.api_url)(self._dispatch_rpc_call)
+        self._dispatch_rpc_call = app.post(self.api_url)(
+            self._dispatch_rpc_call
+        )
 
-    def _dispatch_rpc_call(self, req: flask.Request) -> flask.Response:
+    def _dispatch_rpc_call(self) -> flask.Response:
 
-        req_json: dict = req.get_json()
+        req_json: dict = request.get_json()
         req_id = req_json.get("id")
-        rpc_req = jsonrpc.into_rpc_request(req.get_json())
+        rpc_req = jsonrpc.into_rpc_request(request.get_json())
 
         if rpc_req.is_err():
-            return flask.jsonify(ErrRes(req_id, rpc_req.unwrap_err()).to_dict)
+            return flask.jsonify(ErrRes(req_id, rpc_req.unwrap_err()))
 
         rpc_call = rpc_req.unwrap()
         result = self._verlib.execute_rpc(rpc_call)
