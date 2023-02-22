@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 import abc
 from dataclasses import dataclass
-from typing import Literal, TypeAlias, Any, TypeVar, Generic, cast
+from typing import Literal, Any, TypeVar, Generic, cast
 from enum import Enum, IntEnum
 import json
 from schema import Schema, And, Or, Optional
@@ -139,10 +139,14 @@ class ErrRes(Generic[E]):
 Response = OkRes[V] | ErrRes[E]
 
 
-def parse_request(req: str) -> Result[Request, Error[None]]:
+def into_rpc_request(
+    req: str | dict[str, JSONValues]
+) -> Result[Request, Error[None]]:
 
     try:
-        req_dict: dict[str, Any] = json.loads(req)
+        req_dict: dict[str, Any] = (
+            req if isinstance(req, dict) else json.loads(req)
+        )
     except TypeError:
         return Err(Error(ErrorCode.PARSE_ERROR, "Parse error", None))
 

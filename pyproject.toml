@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "library for building RPC APIs"
 authors = ["stackswithans <stexor12@gmail.com>"]
 readme = "README.md"
-license = "../LICENSE.txt"
+license = "LICENSE.txt"
 keywords = ["API", "library", "RPC"]
 classifiers = [
   "Development Status :: 4 - Beta",

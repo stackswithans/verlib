@@ -1,6 +1,6 @@
 from __future__ import annotations
 from src.jsonrpc import (
-    parse_request,
+    into_rpc_request,
     ErrorCode,
     Error,
     OkRes,
@@ -10,8 +10,8 @@ from src.jsonrpc import (
 )
 
 
-def test_parse_request_works():
-    req = parse_request(
+def test_into_rpc_request_works():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "add", "params": [42, 13], "id": 1}"""
     )
 
@@ -22,27 +22,27 @@ def test_parse_request_works():
     assert req.params == [42, 13]
 
 
-def test_parse_request_errors_when_missing_jsonrpc_field():
-    req = parse_request("""{"method": "add", "params": [42, 13], "id": 1}""")
+def test_into_rpc_request_errors_when_missing_jsonrpc_field():
+    req = into_rpc_request("""{"method": "add", "params": [42, 13], "id": 1}""")
     err = req.unwrap_err()
     assert err.code == ErrorCode.INVALID_REQUEST
     assert err.message == "Invalid Request"
 
 
-def test_parse_request_works_when_using_null_and_str_ids():
-    req = parse_request(
+def test_into_rpc_request_works_when_using_null_and_str_ids():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0","method": "add", "params": [42, 13], "id": "hello2"}"""
     ).unwrap()
     assert req.id == "hello2"
 
-    req = parse_request(
+    req = into_rpc_request(
         """{"jsonrpc": "2.0","method": "add", "params": [42, 13], "id": null}"""
     ).unwrap()
     assert req.id is None
 
 
-def test_parse_request_fails_when_using_weird_ids():
-    req = parse_request(
+def test_into_rpc_request_fails_when_using_weird_ids():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "add", "params": [42, 13], "id": 2.1212}"""
     )
     err = req.unwrap_err()
@@ -50,37 +50,37 @@ def test_parse_request_fails_when_using_weird_ids():
     assert err.message == "Invalid Request"
 
 
-def test_parse_request_works_with_missing_params():
-    req = parse_request(
+def test_into_rpc_request_works_with_missing_params():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub", "id": 2}"""
     ).unwrap()
 
     assert req.params is None
 
 
-def test_parse_request_fails_with_weirds_param_values():
-    req = parse_request(
+def test_into_rpc_request_fails_with_weirds_param_values():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub","params": 2.121, "id": 2}"""
     )
     err = req.unwrap_err()
     assert err.code == ErrorCode.INVALID_REQUEST
     assert err.message == "Invalid Request"
 
-    req = parse_request(
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub","params": 1, "id": 2}"""
     )
     err = req.unwrap_err()
     assert err.code == ErrorCode.INVALID_REQUEST
     assert err.message == "Invalid Request"
 
-    req = parse_request(
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub","params": null, "id": 2}"""
     )
     err = req.unwrap_err()
     assert err.code == ErrorCode.INVALID_REQUEST
     assert err.message == "Invalid Request"
 
-    req = parse_request(
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub","params": [], "id": 2}"""
     )
     err = req.unwrap_err()
@@ -88,21 +88,21 @@ def test_parse_request_fails_with_weirds_param_values():
     assert err.message == "Invalid Request"
 
 
-def test_parse_request_works_with_notifications():
-    req = parse_request(
+def test_into_rpc_request_works_with_notifications():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub", "params": [42, 13]}"""
     ).unwrap()
     assert req.is_notification
 
 
-def test_parse_request_works_with_notification_without_params():
-    req = parse_request("""{"jsonrpc": "2.0", "method": "sub"}""").unwrap()
+def test_into_rpc_request_works_with_notification_without_params():
+    req = into_rpc_request("""{"jsonrpc": "2.0", "method": "sub"}""").unwrap()
     assert req.is_notification
     assert req.params is None
 
 
-def test_parse_request_works_with_named_params():
-    req = parse_request(
+def test_into_rpc_request_works_with_named_params():
+    req = into_rpc_request(
         """{"jsonrpc": "2.0", "method": "sub","params":{"a": 21, "b": 23}, "id": 2}"""
     ).unwrap()
 
