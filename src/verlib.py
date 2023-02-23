@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 import inspect
-from enum import Enum
+from enum import Enum, IntEnum
 from inspect import Signature, BoundArguments, Parameter
 from typing import Any, Callable, ParamSpec, TypeVar, Sized, cast
+from src.verliberr import ErrKind, ErrMsg, VerLibErr
 from src.jsonrpc import (
     Error,
     ErrorCode,
@@ -23,10 +24,6 @@ VerProc = Callable[P, T]
 VerProcParams = JSONValues
 
 
-class VerProcErr(Enum):
-    INVALID_PARAMS = 0
-
-
 @dataclass
 class VerProcedure:
     name: str
@@ -35,7 +32,7 @@ class VerProcedure:
 
     def call(
         self, params: list[JSONValues] | dict[str, JSONValues] | None
-    ) -> Result[JSONValues, VerProcErr]:
+    ) -> Result[JSONValues, VerLibErr]:
 
         pos_params_len = len(
             tuple(
@@ -47,10 +44,10 @@ class VerProcedure:
         )
 
         if params is None and pos_params_len > 0:
-            return Err(VerProcErr.INVALID_PARAMS)
+            return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
         if params is not None and len(params) < pos_params_len:
-            return Err(VerProcErr.INVALID_PARAMS)
+            return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
         # No parameters, just call the function
         # TODO: Make sure function can be called with 'null' arg
@@ -63,10 +60,13 @@ class VerProcedure:
                 args = pos_params
             case dict(dict_params):
                 kwargs = dict_params
+        # TODO: Add type checking for parameters
         try:
             ba = self._signature.bind(*args, **kwargs)
         except TypeError:
-            return Err(VerProcErr.INVALID_PARAMS)
+            return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
+
+        # TODO: Decide on the best way to deal with exceptions
         return Ok(self._fn(*ba.args, **ba.kwargs))
 
 
@@ -109,7 +109,7 @@ class VerModule:
         self,
         proc_name: str,
         params: list[JSONValues] | dict[str, JSONValues] | None,
-    ) -> Result[JSONValues, VerProcErr]:
+    ) -> Result[JSONValues, VerLibErr]:
         return self._procedures[proc_name].call(params)
 
 
@@ -162,7 +162,7 @@ class VerLib:
                 ),
             )
 
-        result: Result[JSONValues, VerProcErr] = module.call_procedure(
+        result: Result[JSONValues, VerLibErr] = module.call_procedure(
             proc_name, req.params
         )
 
@@ -170,15 +170,4 @@ class VerLib:
         if result.is_ok():
             return OkRes(req.id, result.unwrap() if not ignore_result else None)
 
-        match result.unwrap_err():
-            case VerProcErr.INVALID_PARAMS:
-                return ErrRes(
-                    req.id,
-                    Error(
-                        ErrorCode.INVALID_PARAMS,
-                        ErrorMsg.INVALID_PARAMS.value,
-                        None,
-                    ),
-                )
-
-        return ErrRes(req.id, Error(-1, "", None))
+        return result.unwrap_err().into_json_rpc_err(req.id)

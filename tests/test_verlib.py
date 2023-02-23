@@ -1,5 +1,6 @@
 import pytest
-from src.verlib import VerLib, VerModule, VerProcErr
+from src.verlib import VerLib, VerModule
+from src.verliberr import ErrKind
 from src.jsonrpc import Request, Error
 from typing import cast
 
@@ -180,19 +181,19 @@ def test_vermodule_call_procedure(test_module: VerModule):
 def test_vermodule_call_procedure_with_bad_args(test_module: VerModule):
     result = test_module.call_procedure("foo", ["a"])
     assert result.is_err()
-    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
 
     result = test_module.call_procedure("add", None)
     assert result.is_err()
-    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
 
     result = test_module.call_procedure("add", [5])
     assert result.is_err()
-    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
 
     result = test_module.call_procedure("add", {"a": 5, "b": 4, "c": 8})
     assert result.is_err()
-    assert result.unwrap_err() == VerProcErr.INVALID_PARAMS
+    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
 
 
 def test_vermodule_call_procedure_error_propagates(test_module: VerModule):
