@@ -102,10 +102,10 @@ class VerModule:
         else:
             return verproc_decorator(fn)
 
-    def contains_proc(self, name: str) -> bool:
+    def _contains_proc(self, name: str) -> bool:
         return name in self._procedures
 
-    def call_procedure(
+    def _call_procedure(
         self,
         proc_name: str,
         params: list[JSONValues] | dict[str, JSONValues] | None,
@@ -152,7 +152,7 @@ class VerLib:
     def execute_rpc(self, req: Request) -> Response[JSONValues, None]:
         # Check if module and method both exist
         module, proc_name = self._resolve_proc(req.method)
-        if not module or not module.contains_proc(proc_name):
+        if not module or not module._contains_proc(proc_name):
             return ErrRes(
                 req.id,
                 Error(
@@ -162,7 +162,7 @@ class VerLib:
                 ),
             )
 
-        result: Result[JSONValues, VerLibErr] = module.call_procedure(
+        result: Result[JSONValues, VerLibErr] = module._call_procedure(
             proc_name, req.params
         )
 

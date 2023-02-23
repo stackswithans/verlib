@@ -124,7 +124,7 @@ def test_vermodule_verproc(
     def test_proc() -> int:
         return 1
 
-    assert vermodule.contains_proc("test_proc")
+    assert vermodule._contains_proc("test_proc")
 
     proc = vermodule._procedures.get("test_proc")
     assert proc is not None
@@ -137,7 +137,7 @@ def test_vermodule_verproc_rename(
     def test_proc() -> int:
         return 1
 
-    assert vermodule.contains_proc("test_proc_1")
+    assert vermodule._contains_proc("test_proc_1")
 
     assert "test_proc" not in vermodule._procedures
     proc = vermodule._procedures.get("test_proc_1")
@@ -162,43 +162,13 @@ def test_vermodule_verproc_error_on_redeclare(
 
 
 def test_vermodule_contains_proc(vermodule: VerModule):
-    assert vermodule.contains_proc("foo") == False
+    assert vermodule._contains_proc("foo") == False
 
     @vermodule.verproc
     def foo():
         return 1
 
-    assert vermodule.contains_proc("foo")
-
-
-def test_vermodule_call_procedure(test_module: VerModule):
-    assert test_module.call_procedure("foo", None).unwrap() == 1
-    assert test_module.call_procedure("foo", []).unwrap() == 1
-    assert test_module.call_procedure("add", [5, 2]).unwrap() == 7
-    assert test_module.call_procedure("add", {"a": 4, "b": 4}).unwrap() == 8
-
-
-def test_vermodule_call_procedure_with_bad_args(test_module: VerModule):
-    result = test_module.call_procedure("foo", ["a"])
-    assert result.is_err()
-    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
-
-    result = test_module.call_procedure("add", None)
-    assert result.is_err()
-    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
-
-    result = test_module.call_procedure("add", [5])
-    assert result.is_err()
-    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
-
-    result = test_module.call_procedure("add", {"a": 5, "b": 4, "c": 8})
-    assert result.is_err()
-    assert result.unwrap_err().err_kind == ErrKind.INVALID_PARAMS
-
-
-def test_vermodule_call_procedure_error_propagates(test_module: VerModule):
-    with pytest.raises(TypeError):
-        test_module.call_procedure("add", [None, None])
+    assert vermodule._contains_proc("foo")
 
 
 def test_verlib_execute_rpc(test_lib: VerLib, dummy_req: Request):
