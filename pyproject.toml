@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyverlib"
-version = "0.1.0"
+version = "0.1.2"
 description = "library for building RPC APIs"
 authors = ["stackswithans <stexor12@gmail.com>"]
 readme = "README.md"
@@ -10,18 +10,18 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
-packages = [{include = "src/**/*.py"}]
+packages=[{include = "verlib"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 schema = "^0.7.5"
 flask = {version = "^2.2.3", optional = true}
 django = {version = "^4.1.7", optional = true}
+typing-extensions = "^4.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.294"
 pytest = "^7.2.1"
-typing-extensions = "^4.5.0"
 
 [build-system]
 requires = ["poetry-core"]
