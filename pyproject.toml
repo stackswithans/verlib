@@ -10,7 +10,10 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
-packages=[{include = "verlib"}]
+packages=[
+    {include = "verlib"}, 
+    {include = "utils"} 
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
