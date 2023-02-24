@@ -2,14 +2,14 @@ from enum import IntEnum, Enum
 import traceback as tb
 from io import StringIO
 from dataclasses import dataclass
-from src.jsonrpc import (
+from verlib.jsonrpc import (
     ErrRes,
     JSONRPCId,
     ErrorCode as JErrorCode,
     ErrorMsg as JErrorMsg,
     Error as JError,
 )
-import src.jsonrpc as jsonrpc
+import verlib.jsonrpc as jsonrpc
 
 
 class ErrKind(IntEnum):

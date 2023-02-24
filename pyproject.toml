@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "verlib"
+name = "pyverlib"
 version = "0.1.0"
 description = "library for building RPC APIs"
 authors = ["stackswithans <stexor12@gmail.com>"]
@@ -10,7 +10,7 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
-packages = [{include = "src"}]
+packages = [{include = "src/**/*.py"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"

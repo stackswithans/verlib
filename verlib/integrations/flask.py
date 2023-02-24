@@ -1,6 +1,6 @@
-from src.verlib import VerLib
-from src.jsonrpc import Request, ErrRes, OkRes
-import src.jsonrpc as jsonrpc
+from verlib.verlib import VerLib
+from verlib.jsonrpc import Request, ErrRes, OkRes
+import verlib.jsonrpc as jsonrpc
 import typing
 from flask import Flask, request
 import flask

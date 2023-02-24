@@ -3,8 +3,8 @@ import inspect
 from enum import Enum, IntEnum
 from inspect import Signature, BoundArguments, Parameter
 from typing import Any, Callable, ParamSpec, TypeVar, Sized, cast
-from src.verliberr import ErrKind, ErrMsg, VerLibErr
-from src.jsonrpc import (
+from verlib.verliberr import ErrKind, ErrMsg, VerLibErr
+from verlib.jsonrpc import (
     Error,
     ErrorCode,
     ErrorMsg,
@@ -49,7 +49,6 @@ class VerProcedure:
         if params is not None and len(params) < pos_params_len:
             return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
-        # No parameters, just call the function
         # TODO: Make sure function can be called with 'null' arg
         if params is None or len(params) == 0:
             return Ok(self._fn())

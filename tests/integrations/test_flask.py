@@ -1,7 +1,7 @@
-from src.integrations.flask import FlaskVerLib
+from verlib.integrations.flask import FlaskVerLib
 from flask import Flask
 from flask.testing import FlaskClient
-from src.verlib import VerLib
+from verlib import VerLib
 from typing import Any
 import pytest
 

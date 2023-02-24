@@ -1,7 +1,7 @@
 import pytest
-from src.verlib import VerLib, VerModule
-from src.verliberr import ErrKind
-from src.jsonrpc import Request, Error
+from verlib.verlib import VerLib, VerModule
+from verlib.verliberr import ErrKind
+from verlib.jsonrpc import Request, Error
 from typing import cast
 
 

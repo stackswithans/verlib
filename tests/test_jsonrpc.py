@@ -1,5 +1,5 @@
 from __future__ import annotations
-from src.jsonrpc import (
+from verlib.jsonrpc import (
     into_rpc_request,
     ErrorCode,
     Error,
