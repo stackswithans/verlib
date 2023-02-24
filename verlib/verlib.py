@@ -17,7 +17,7 @@ from verlib.jsonrpc import (
 from utils.result import Err, Ok, Result
 
 P = ParamSpec("P")
-T = TypeVar("T", bound=JSONValues)
+T = TypeVar("T", bound=JSONValues, covariant=True)
 
 
 VerProc = Callable[P, T]

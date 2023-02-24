@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 import abc
 from dataclasses import dataclass
-from typing import Literal, Any, TypeVar, Generic, cast
+from typing import Literal, Any, TypeVar, Generic, cast, Mapping, Sequence
 from enum import Enum, IntEnum
 import json
 from schema import Schema, And, Or, Optional
@@ -11,7 +11,12 @@ from utils.result import Result, Ok, Err
 
 
 JSONValues = (
-    int | str | float | list["JSONValues"] | dict[str, "JSONValues"] | None
+    int
+    | str
+    | float
+    | Sequence["JSONValues"]
+    | Mapping[str, "JSONValues"]
+    | None
 )
 
 

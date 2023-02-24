@@ -25,6 +25,10 @@ def test_module(vermodule: VerModule) -> VerModule:
     def add(a: int, b: int) -> int:
         return a + b
 
+    @vermodule.verproc
+    def returns_list(a: int, b: int) -> list[int]:
+        return []
+
     return vermodule
 
 
