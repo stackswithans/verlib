@@ -29,6 +29,10 @@ def test_module(vermodule: VerModule) -> VerModule:
     def returns_list(a: int, b: int) -> list[int]:
         return []
 
+    @vermodule.verproc
+    def returns_dict(a: int, b: int) -> dict[str, float]:
+        return dict({})
+
     return vermodule
 
 
@@ -115,6 +119,22 @@ def test_verlib_verproc_error_on_redeclare(
         @verlib.verproc(name="test_proc_1")
         def test_proc() -> int:
             return 1
+
+
+def test_verlib_import(test_lib: VerLib):
+    res = test_lib.import_lib()
+    assert res.is_success()
+    result_data = res.result_data()
+    assert isinstance(result_data, list)
+    assert len(result_data) == 5
+    assert all(
+        map(
+            lambda p: "name" in p
+            and "num_params" in p
+            and p["module"] in ("_default_", "test_module"),
+            result_data,
+        )
+    )
 
 
 def test_vermodule_created_normally(vermodule: VerModule):

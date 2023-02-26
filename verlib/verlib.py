@@ -2,7 +2,16 @@ from dataclasses import dataclass, field
 import inspect
 from enum import Enum, IntEnum
 from inspect import Signature, BoundArguments, Parameter
-from typing import Any, Callable, ParamSpec, TypeVar, Sized, cast
+from typing import (
+    Any,
+    TypedDict,
+    Sequence,
+    Callable,
+    ParamSpec,
+    TypeVar,
+    Sized,
+    cast,
+)
 from verlib.verliberr import ErrKind, ErrMsg, VerLibErr
 from verlib.jsonrpc import (
     Error,
@@ -17,11 +26,20 @@ from verlib.jsonrpc import (
 from utils.result import Err, Ok, Result
 
 P = ParamSpec("P")
-T = TypeVar("T", bound=JSONValues, covariant=True)
+T = TypeVar("T", bound=JSONValues)
 
 
 VerProc = Callable[P, T]
 VerProcParams = JSONValues
+
+
+class VerProcDesc(TypedDict):
+    module: str | None
+    name: str
+    num_params: int
+
+
+VerLibDesc = list[VerProcDesc]
 
 
 @dataclass
@@ -30,11 +48,8 @@ class VerProcedure:
     _fn: Callable[..., JSONValues]
     _signature: Signature
 
-    def call(
-        self, params: list[JSONValues] | dict[str, JSONValues] | None
-    ) -> Result[JSONValues, VerLibErr]:
-
-        pos_params_len = len(
+    def _get_num_params(self) -> int:
+        return len(
             tuple(
                 filter(
                     lambda p: p.kind == Parameter.POSITIONAL_OR_KEYWORD,
@@ -43,6 +58,18 @@ class VerProcedure:
             )
         )
 
+    def get_proc_description(self, module: str) -> VerProcDesc:
+        return {
+            "module": module,
+            "name": self.name,
+            "num_params": self._get_num_params(),
+        }
+
+    def call(
+        self, params: list[JSONValues] | dict[str, JSONValues] | None
+    ) -> Result[JSONValues, VerLibErr]:
+
+        pos_params_len = self._get_num_params()
         if params is None and pos_params_len > 0:
             return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
@@ -80,6 +107,15 @@ class VerModule:
 
     def _register_proc(self, proc: VerProcedure):
         self._procedures[proc.name] = proc
+
+    @property
+    def module_description(self) -> VerLibDesc:
+        return list(
+            map(
+                lambda p: p.get_proc_description(self.name),
+                self._procedures.values(),
+            )
+        )
 
     def verproc(
         self, fn: VerProc[P, T] | None = None, *, name: str = ""
@@ -147,6 +183,13 @@ class VerLib:
             )
         else:
             return (None, "")
+
+    def import_lib(self) -> Response[VerLibDesc, None]:
+        verlib_desc = self._default_module.module_description
+        for module in self._modules.values():
+            verlib_desc = [*verlib_desc, *module.module_description]
+
+        return OkRes(None, verlib_desc)
 
     def execute_rpc(self, req: Request) -> Response[JSONValues, None]:
         # Check if module and method both exist

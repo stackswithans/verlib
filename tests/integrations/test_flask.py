@@ -2,7 +2,7 @@ from verlib.integrations.flask import FlaskVerLib
 from flask import Flask
 from flask.testing import FlaskClient
 from verlib import VerLib
-from typing import Any
+from typing import Any, cast
 import pytest
 
 
@@ -120,3 +120,20 @@ def test_res_on_exception(client: FlaskClient, jsonrpc_headers: dict[str, Any]):
             "/verlib",
             json={**jsonrpc_headers, "method": "add", "params": [None, 13]},
         )
+
+
+def test_res_on_lib_import(client: FlaskClient):
+    res = client.get("/verlib/import")
+    lib_import: dict = cast(dict, res.json)
+
+    assert lib_import["id"] == None
+    assert lib_import["result"] is not None
+    assert len(lib_import["result"]) == 2
+    assert all(
+        map(
+            lambda p: "name" in p
+            and "num_params" in p
+            and p["module"] in ("_default_", "test_module"),
+            lib_import["result"],
+        )
+    )

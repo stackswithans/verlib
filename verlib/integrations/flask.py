@@ -7,14 +7,18 @@ import flask
 
 
 class FlaskVerLib:
-    def __init__(self, verlib: VerLib, api_url="/verlib"):
+    def __init__(self, verlib: VerLib, lib_url="/verlib"):
         self._verlib: VerLib = verlib
-        self.api_url = api_url
+        self.lib_url = lib_url
 
     def init_app(self, app: Flask):
-        self._dispatch_rpc_call = app.post(self.api_url)(
+        self._dispatch_rpc_call = app.post(self.lib_url)(
             self._dispatch_rpc_call
         )
+
+        @app.get(f"{self.lib_url}/import")
+        def import_lib() -> flask.Response:
+            return flask.jsonify(self._verlib.import_lib())
 
     def _dispatch_rpc_call(self) -> flask.Response:
 
