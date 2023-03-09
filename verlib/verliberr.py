@@ -1,6 +1,4 @@
 from enum import IntEnum, Enum
-import traceback as tb
-from io import StringIO
 from dataclasses import dataclass
 from verlib.jsonrpc import (
     ErrRes,
@@ -15,6 +13,7 @@ import verlib.jsonrpc as jsonrpc
 class ErrKind(IntEnum):
     INVALID_PARAMS = 0
     PROCEDURE_RAISED_EXCEPTION = -32500
+    NOT_AUTHORIZED = -32501
 
 
 class ErrMsg(Enum):
@@ -22,6 +21,7 @@ class ErrMsg(Enum):
     PROCEDURE_RAISED_EXCEPTION = (
         "An error occurred during the execution of the procedure."
     )
+    NOT_AUTHORIZED = "Insufficient privileges to invoke procedure."
 
     def __str__(self) -> str:
         return self.value
