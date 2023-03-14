@@ -1,28 +1,23 @@
 from __future__ import annotations
 from typing_extensions import Self
 from dataclasses import dataclass, field
+from typing import ClassVar, Iterable
 
 
 @dataclass
 class AccessLevel:
+    public: ClassVar[AccessLevel]
+    private: ClassVar[AccessLevel]
 
-    id: int | str
-    _or_levels: list[AccessLevel] = field(default_factory=list)
+    def __init__(self, acls_id: Iterable[int] | None = None):
+        self._acls_ids: set[int] = set(acls_id) if acls_id else set((id(self),))
 
     def __or__(self, other: Self) -> Self:
-        self._or_levels.append(other)
-        return self
+        return AccessLevel(self._acls_ids.union(other._acls_ids))
 
     def clears(self, other: Self) -> bool:
-        if self.id == other.id:
-            return True
-        # Check if other levels match
-        return any(map(lambda a: a.id == self.id, other._or_levels))
+        return self._acls_ids.issuperset(other._acls_ids)
 
-    @classmethod
-    def public(cls) -> Self:
-        return cls("public")
 
-    @classmethod
-    def private(cls) -> Self:
-        return cls.public() | cls("private")
+AccessLevel.public = AccessLevel()
+AccessLevel.private = AccessLevel.public | AccessLevel()

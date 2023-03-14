@@ -53,7 +53,7 @@ class VerProcedure:
     name: str
     _fn: Callable[..., JSONValues]
     _signature: Signature
-    access_level: AccessLevel = field(default_factory=AccessLevel.public)
+    access_level: AccessLevel = AccessLevel.public
 
     def _get_num_params(self) -> int:
         return len(
@@ -243,7 +243,7 @@ class VerLib:
         access_level = (
             self._authorization(http_headers, req, context)
             if self._authorization
-            else AccessLevel.public()
+            else AccessLevel.public
         )
 
         if not module.check_procedure_access(proc_name, access_level):
