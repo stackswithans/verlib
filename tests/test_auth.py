@@ -39,4 +39,3 @@ def test_public_private_acl_work():
     assert AccessLevel.private.clears(AccessLevel.private)
     assert not AccessLevel.public.clears(AccessLevel.private)
     assert AccessLevel.private.clears(AccessLevel.private)
-    pass
