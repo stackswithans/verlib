@@ -36,7 +36,7 @@ VerProcParams = JSONValues
 HttpHeaders = Mapping[str, Any]
 Context = SimpleNamespace
 ContextBuilder = Callable[[HttpHeaders, Request], Context]
-AccessFn = Callable[[HttpHeaders, Request, Context], AccessLevel]
+AuthProvider = Callable[[HttpHeaders, Request, Context], AccessLevel]
 
 
 class VerProcDesc(TypedDict):
@@ -107,13 +107,17 @@ class VerProcedure:
 class VerModule:
     name: str
     _procedures: dict[str, VerProcedure]
+    default_access_level: AccessLevel
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, *, access_level=AccessLevel.public):
         self.name = name
         self._procedures = {}
+        self.default_access_level = access_level
 
     def _register_proc(self, proc: VerProcedure):
         self._procedures[proc.name] = proc
+        proc._fn._vermodule = self.name
+        proc._fn._verproc_name = proc.name
 
     @property
     def module_description(self) -> VerLibDesc:
@@ -125,7 +129,11 @@ class VerModule:
         )
 
     def verproc(
-        self, fn: VerProc[P, T] | None = None, *, name: str = ""
+        self,
+        fn: VerProc[P, T] | None = None,
+        *,
+        name: str = "",
+        access_level: AccessLevel | None = None,
     ) -> Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]:
         def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
             proc_name = name if name != "" else procedure.__name__
@@ -135,7 +143,14 @@ class VerModule:
                 )
 
             self._register_proc(
-                VerProcedure(proc_name, procedure, inspect.signature(procedure))
+                VerProcedure(
+                    proc_name,
+                    procedure,
+                    inspect.signature(procedure),
+                    access_level
+                    if access_level is not None
+                    else self.default_access_level,
+                )
             )
             return procedure
 
@@ -143,6 +158,32 @@ class VerModule:
             return verproc_decorator
         else:
             return verproc_decorator(fn)
+
+    def access_level(
+        self, fn: VerProc[P, T], access_level: AccessLevel
+    ) -> VerProc[P, T]:
+
+        # Verproc has not been registered
+        if (
+            getattr(fn, "_vermodule") is None
+            or getattr(fn, "_verproc_name") is None
+        ):
+            raise TypeError(f"Function is not a VerProcedure.")
+        # Verproc not registered to this module
+        proc_name: str = fn._verproc_name
+        if proc_name not in self._procedures:
+            raise TypeError(
+                f"Procedure '{proc_name}' is not registered to the module '{self.name}'"
+            )
+
+        self._procedures[proc_name].access_level = access_level
+        return fn
+
+    def public_access(self, fn: VerProc[P, T]) -> VerProc[P, T]:
+        return self.access_level(fn, access_level=AccessLevel.public)
+
+    def private_access(self, fn: VerProc[P, T]) -> VerProc[P, T]:
+        return self.access_level(fn, access_level=AccessLevel.private)
 
     def _contains_proc(self, name: str) -> bool:
         return name in self._procedures
@@ -169,13 +210,13 @@ class VerLib:
     name: str
     _modules: dict[str, VerModule]
     _context_builder: ContextBuilder | None
-    _authorization: AccessFn | None
+    _auth_provider: AuthProvider | None
 
     def __init__(self, name: str):
         self.name = name
         self._default_module: VerModule = VerModule("_default_")
         self._context_builder = None
-        self._authorization = None
+        self._auth_provider = None
         self._modules = {}
 
     def declare_module(self, module: VerModule):
@@ -215,8 +256,8 @@ class VerLib:
         self._context_builder = f
         return f
 
-    def authorization(self, f: AccessFn) -> AccessFn:
-        self._authorization = f
+    def auth_provider(self, f: AuthProvider) -> AuthProvider:
+        self._auth_provider = f
         return f
 
     def execute_rpc(
@@ -241,8 +282,8 @@ class VerLib:
         )
 
         access_level = (
-            self._authorization(http_headers, req, context)
-            if self._authorization
+            self._auth_provider(http_headers, req, context)
+            if self._auth_provider
             else AccessLevel.public
         )
 
