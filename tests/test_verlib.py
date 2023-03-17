@@ -18,7 +18,7 @@ def verlib(auth_key: str) -> VerLib:
     @verlib.context_builder
     def context_builder(headers: HttpHeaders, req: Request) -> Context:
         context = Context()
-        context.ok = False
+        context.is_authenticated = headers.get("X-API-KEY") == auth_key
         return context
 
     @verlib.auth_provider
@@ -27,7 +27,7 @@ def verlib(auth_key: str) -> VerLib:
     ) -> AccessLevel:
         return (
             AccessLevel.private
-            if headers.get("X-API-KEY") == auth_key
+            if context.is_authenticated
             else AccessLevel.public
         )
 
@@ -61,6 +61,16 @@ def test_module(vermodule: VerModule) -> VerModule:
     @vermodule.verproc
     def protected_proc() -> int:
         return 0
+
+    return vermodule
+
+
+@pytest.fixture
+def ctx_module(vermodule: VerModule) -> VerModule:
+    @vermodule.private_access
+    @vermodule.verproc
+    def echo(msg: str, ctx: Context) -> str:
+        return f"header: {ctx.header_msg}\nbody:{msg}"
 
     return vermodule
 

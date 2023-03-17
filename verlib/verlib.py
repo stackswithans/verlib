@@ -38,7 +38,7 @@ Context = SimpleNamespace
 ContextBuilder = Callable[[HttpHeaders, Request], Context]
 AuthProvider = Callable[[HttpHeaders, Request, Context], AccessLevel]
 
-DecoratedVerProc = Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]
+DecoratedVerProc = Callable[..., VerProc[P, T]] | VerProc[P, T]
 
 
 class VerProcDesc(TypedDict):
