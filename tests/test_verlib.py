@@ -3,7 +3,7 @@ from verlib.verlib import VerLib, VerModule, HttpHeaders, Context
 from verlib.verliberr import ErrKind
 from verlib.auth import AccessLevel
 from verlib.jsonrpc import Request, Error, ErrorCode
-from typing import cast
+from typing import cast, Any
 
 
 @pytest.fixture
@@ -80,6 +80,10 @@ def ctx_module(vermodule: VerModule) -> VerModule:
     @vermodule.verproc
     def bad_echo(ctx: Context, msg: str) -> str:
         return f"{ctx.header_msg} {msg}"
+
+    @vermodule.verproc
+    def bad_echo_2(ctx) -> str:  # type:ignore
+        return f"{ctx.header_msg}"
 
     return vermodule
 
@@ -350,6 +354,16 @@ def test_verlib_module_proc_context_works_only_argument(
 def test_verlib_module_proc_context_fails_if_not_last_arg(ctx_lib: VerLib):
     res = ctx_lib.execute_rpc(
         Request(method="test_module.bad_echo", id=1, params=["World!"]),
+        http_headers={"X-HEADER-MSG": "Hello"},
+    )
+    assert res.is_err()
+    err: Error[None] = cast(Error, res.err_data())
+    assert err.code == ErrorCode.INVALID_PARAMS
+
+
+def test_verlib_module_proc_context_fails_if_not_annotated(ctx_lib: VerLib):
+    res = ctx_lib.execute_rpc(
+        Request(method="test_module.bad_echo_2", id=1),
         http_headers={"X-HEADER-MSG": "Hello"},
     )
     assert res.is_err()
