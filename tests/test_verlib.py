@@ -2,7 +2,7 @@ import pytest
 from verlib.verlib import VerLib, VerModule, HttpHeaders, Context
 from verlib.verliberr import ErrKind
 from verlib.auth import AccessLevel
-from verlib.jsonrpc import Request, Error
+from verlib.jsonrpc import Request, Error, ErrorCode
 from typing import cast
 
 
@@ -19,6 +19,7 @@ def verlib(auth_key: str) -> VerLib:
     def context_builder(headers: HttpHeaders, req: Request) -> Context:
         context = Context()
         context.is_authenticated = headers.get("X-API-KEY") == auth_key
+        context.header_msg = headers.get("X-HEADER-MSG")
         return context
 
     @verlib.auth_provider
@@ -70,7 +71,15 @@ def ctx_module(vermodule: VerModule) -> VerModule:
     @vermodule.private_access
     @vermodule.verproc
     def echo(msg: str, ctx: Context) -> str:
-        return f"header: {ctx.header_msg}\nbody:{msg}"
+        return f"{ctx.header_msg} {msg}"
+
+    @vermodule.verproc
+    def echo_2(ctx: Context) -> str:
+        return f"{ctx.header_msg}"
+
+    @vermodule.verproc
+    def bad_echo(ctx: Context, msg: str) -> str:
+        return f"{ctx.header_msg} {msg}"
 
     return vermodule
 
@@ -83,6 +92,12 @@ def test_lib(verlib: VerLib, test_module: VerModule) -> VerLib:
 
     verlib.declare_module(test_module)
 
+    return verlib
+
+
+@pytest.fixture
+def ctx_lib(verlib: VerLib, ctx_module: VerModule) -> VerLib:
+    verlib.declare_module(ctx_module)
     return verlib
 
 
@@ -310,3 +325,33 @@ def test_verlib_module_allows_call_to_method_auth(
     )
     assert res.is_success()
     assert res.result_data() == 0
+
+
+def test_verlib_module_proc_context_works(ctx_lib: VerLib, auth_key: str):
+    res = ctx_lib.execute_rpc(
+        Request(method="test_module.echo", id=1, params=["World!"]),
+        http_headers={"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello"},
+    )
+    assert res.is_success()
+    assert res.result_data() == "Hello World!"
+
+
+def test_verlib_module_proc_context_works_only_argument(
+    ctx_lib: VerLib, auth_key: str
+):
+    res = ctx_lib.execute_rpc(
+        Request(method="test_module.echo_2", id=1),
+        http_headers={"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello World!"},
+    )
+    assert res.is_success()
+    assert res.result_data() == "Hello World!"
+
+
+def test_verlib_module_proc_context_fails_if_not_last_arg(ctx_lib: VerLib):
+    res = ctx_lib.execute_rpc(
+        Request(method="test_module.bad_echo", id=1, params=["World!"]),
+        http_headers={"X-HEADER-MSG": "Hello"},
+    )
+    assert res.is_err()
+    err: Error[None] = cast(Error, res.err_data())
+    assert err.code == ErrorCode.INVALID_PARAMS

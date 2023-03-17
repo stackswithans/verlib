@@ -37,7 +37,6 @@ HttpHeaders = Mapping[str, Any]
 Context = SimpleNamespace
 ContextBuilder = Callable[[HttpHeaders, Request], Context]
 AuthProvider = Callable[[HttpHeaders, Request, Context], AccessLevel]
-
 DecoratedVerProc = Callable[..., VerProc[P, T]] | VerProc[P, T]
 
 
@@ -75,29 +74,47 @@ class VerProcedure:
         }
 
     def call(
-        self, params: list[JSONValues] | dict[str, JSONValues] | None
+        self,
+        args: list[JSONValues] | dict[str, JSONValues],
+        context: Context,
     ) -> Result[JSONValues, VerLibErr]:
 
-        pos_params_len = self._get_num_params()
-        if params is None and pos_params_len > 0:
+        pos_params = tuple(
+            filter(
+                lambda p: p.kind == Parameter.POSITIONAL_OR_KEYWORD,
+                self._signature.parameters.values(),
+            )
+        )
+
+        # A procedure requires the request context if
+        # the last positional parameter is annotated with the Context type
+        proc_requires_context = (
+            len(pos_params) > 0 and pos_params[-1].annotation == Context
+        )
+
+        # Account for context when getting argument len
+        args_len = len(args) + 1 if proc_requires_context else len(args)
+
+        if args_len != len(pos_params):
             return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
-        if params is not None and len(params) < pos_params_len:
-            return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
-
-        # TODO: Make sure function can be called with 'null' arg
-        if params is None or len(params) == 0:
-            return Ok(self._fn())
-
-        args, kwargs = ([], {})
-        match params:
+        pargs: list[JSONValues | Context] = []
+        pkwargs: dict[str, JSONValues | Context] = {}
+        match args:
             case list(pos_params):
-                args = pos_params
+                pargs = cast(list[JSONValues | Context], pos_params)
+                if proc_requires_context:
+                    pargs.append(context)
+
             case dict(dict_params):
-                kwargs = dict_params
+                pkwargs = cast(dict[str, JSONValues | Context], dict_params)
+                if proc_requires_context:
+                    ctx_param = pos_params[-1]
+                    pkwargs[ctx_param.name] = context
+
         # TODO: Add type checking for parameters
         try:
-            ba = self._signature.bind(*args, **kwargs)
+            ba = self._signature.bind(*pargs, **pkwargs)
         except TypeError:
             return Err(VerLibErr(ErrKind.INVALID_PARAMS, ErrMsg.INVALID_PARAMS))
 
@@ -205,10 +222,10 @@ class VerModule:
     def _call_procedure(
         self,
         proc_name: str,
-        params: list[JSONValues] | dict[str, JSONValues] | None,
+        params: list[JSONValues] | dict[str, JSONValues],
         context: Context,
     ) -> Result[JSONValues, VerLibErr]:
-        return self._procedures[proc_name].call(params)
+        return self._procedures[proc_name].call(params, context)
 
 
 @dataclass
@@ -318,8 +335,10 @@ class VerLib:
                 ),
             )
 
+        params = req.params if req.params != None else []
+
         result: Result[JSONValues, VerLibErr] = module._call_procedure(
-            proc_name, req.params, context
+            proc_name, params, context
         )
 
         ignore_result: bool = req.is_notification
