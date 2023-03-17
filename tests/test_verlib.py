@@ -1,13 +1,37 @@
 import pytest
-from verlib.verlib import VerLib, VerModule
+from verlib.verlib import VerLib, VerModule, HttpHeaders, Context
 from verlib.verliberr import ErrKind
+from verlib.auth import AccessLevel
 from verlib.jsonrpc import Request, Error
 from typing import cast
 
 
 @pytest.fixture
-def verlib() -> VerLib:
-    return VerLib("test_lib")
+def auth_key() -> str:
+    return "baz"
+
+
+@pytest.fixture
+def verlib(auth_key: str) -> VerLib:
+    verlib = VerLib("test_lib")
+
+    @verlib.context_builder
+    def context_builder(headers: HttpHeaders, req: Request) -> Context:
+        context = Context()
+        context.ok = False
+        return context
+
+    @verlib.auth_provider
+    def auth_provider(
+        headers: HttpHeaders, req: Request, context: Context
+    ) -> AccessLevel:
+        return (
+            AccessLevel.private
+            if headers.get("X-API-KEY") == auth_key
+            else AccessLevel.public
+        )
+
+    return verlib
 
 
 @pytest.fixture
@@ -32,6 +56,11 @@ def test_module(vermodule: VerModule) -> VerModule:
     @vermodule.verproc
     def returns_dict(a: int, b: int) -> dict[str, float]:
         return dict({})
+
+    @vermodule.private_access
+    @vermodule.verproc
+    def protected_proc() -> int:
+        return 0
 
     return vermodule
 
@@ -126,7 +155,7 @@ def test_verlib_import(test_lib: VerLib):
     assert res.is_success()
     result_data = res.result_data()
     assert isinstance(result_data, list)
-    assert len(result_data) == 5
+    assert len(result_data) == 6
     assert all(
         map(
             lambda p: "name" in p
@@ -242,3 +271,32 @@ def test_verlib_module_proc_call_propagates_error(test_lib: VerLib):
         test_lib.execute_rpc(
             Request(method="test_module.add", id=1, params=[None, None])
         )
+
+
+def test_verlib_module_allows_unauthenticated_request(test_lib: VerLib):
+    res = test_lib.execute_rpc(Request(method="test_module.foo", id=1))
+    assert res.is_success()
+    assert res.result_data() == 1
+
+
+def test_verlib_module_disallows_call_to_method_without_correct_access_level(
+    test_lib: VerLib,
+):
+    res = test_lib.execute_rpc(
+        Request(method="test_module.protected_proc", id=1)
+    )
+    assert res.is_err()
+    err: Error[None] = cast(Error, res.err_data())
+    assert err.code == -32501
+    assert err.message == "Insufficient privileges to invoke procedure."
+
+
+def test_verlib_module_allows_call_to_method_auth(
+    test_lib: VerLib, auth_key: str
+):
+    res = test_lib.execute_rpc(
+        Request(method="test_module.protected_proc", id=1),
+        http_headers={"X-API-KEY": auth_key},
+    )
+    assert res.is_success()
+    assert res.result_data() == 0

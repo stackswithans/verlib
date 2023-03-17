@@ -38,6 +38,8 @@ Context = SimpleNamespace
 ContextBuilder = Callable[[HttpHeaders, Request], Context]
 AuthProvider = Callable[[HttpHeaders, Request, Context], AccessLevel]
 
+DecoratedVerProc = Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]
+
 
 class VerProcDesc(TypedDict):
     module: str | None
@@ -134,7 +136,7 @@ class VerModule:
         *,
         name: str = "",
         access_level: AccessLevel | None = None,
-    ) -> Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]:
+    ) -> DecoratedVerProc[P, T]:
         def verproc_decorator(procedure: VerProc[P, T]) -> VerProc[P, T]:
             proc_name = name if name != "" else procedure.__name__
             if proc_name in self._procedures:
@@ -160,8 +162,8 @@ class VerModule:
             return verproc_decorator(fn)
 
     def access_level(
-        self, fn: VerProc[P, T], access_level: AccessLevel
-    ) -> VerProc[P, T]:
+        self, fn: DecoratedVerProc[P, T], access_level: AccessLevel
+    ) -> DecoratedVerProc[P, T]:
 
         # Verproc has not been registered
         if (
@@ -179,10 +181,14 @@ class VerModule:
         self._procedures[proc_name].access_level = access_level
         return fn
 
-    def public_access(self, fn: VerProc[P, T]) -> VerProc[P, T]:
+    def public_access(
+        self, fn: DecoratedVerProc[P, T]
+    ) -> DecoratedVerProc[P, T]:
         return self.access_level(fn, access_level=AccessLevel.public)
 
-    def private_access(self, fn: VerProc[P, T]) -> VerProc[P, T]:
+    def private_access(
+        self, fn: DecoratedVerProc[P, T]
+    ) -> DecoratedVerProc[P, T]:
         return self.access_level(fn, access_level=AccessLevel.private)
 
     def _contains_proc(self, name: str) -> bool:
@@ -229,7 +235,7 @@ class VerLib:
 
     def verproc(
         self, fn: VerProc[P, T] | None = None, *, name: str = ""
-    ) -> Callable[[VerProc[P, T]], VerProc[P, T]] | VerProc[P, T]:
+    ) -> DecoratedVerProc[P, T]:
 
         return self._default_module.verproc(fn, name=name)
 
@@ -255,6 +261,21 @@ class VerLib:
     def context_builder(self, f: ContextBuilder) -> ContextBuilder:
         self._context_builder = f
         return f
+
+    def access_level(
+        self, fn: DecoratedVerProc[P, T], access_level: AccessLevel
+    ) -> DecoratedVerProc[P, T]:
+        return self._default_module.access_level(fn, access_level)
+
+    def public_access(
+        self, fn: DecoratedVerProc[P, T]
+    ) -> DecoratedVerProc[P, T]:
+        return self._default_module.public_access(fn)
+
+    def private_access(
+        self, fn: DecoratedVerProc[P, T]
+    ) -> DecoratedVerProc[P, T]:
+        return self._default_module.private_access(fn)
 
     def auth_provider(self, f: AuthProvider) -> AuthProvider:
         self._auth_provider = f
