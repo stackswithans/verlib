@@ -1,4 +1,4 @@
-from .verlib import VerLib, VerModule
+from .verlib import VerLib, VerModule, Context, HttpHeaders
 import verlib.integrations as integrations
 
-__all__ = ["VerModule", "VerLib", "integrations"]
+__all__ = ["VerModule", "VerLib", "integrations", "Context", "HttpHeaders"]

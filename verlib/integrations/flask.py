@@ -16,7 +16,7 @@ class FlaskVerLib:
             self._dispatch_rpc_call
         )
 
-        @app.get(f"{self.lib_url}/import")
+        # TODO: Figure out a safer way to expose procedures
         def import_lib() -> flask.Response:
             return flask.jsonify(self._verlib.import_lib())
 
