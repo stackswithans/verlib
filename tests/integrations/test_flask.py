@@ -1,7 +1,10 @@
 from verlib.integrations.flask import FlaskVerLib
+from verlib.jsonrpc import Request
+from verlib import VerLib, Context, HttpHeaders
+from verlib.auth import AccessLevel
+
 from flask import Flask
 from flask.testing import FlaskClient
-from verlib import VerLib
 from typing import Any, cast
 import pytest
 
@@ -18,7 +21,34 @@ def test_lib() -> VerLib:
     def add(a: int, b: int) -> int:
         return a + b
 
+    @verlib.private_access
+    @verlib.verproc
+    def double(a: int) -> int:
+        return a**2
+
+    @verlib.context_builder
+    def context_builder(headers: HttpHeaders, req: Request) -> Context:
+        context = Context()
+        context.is_authenticated = headers.get("X-API-KEY") == auth_key
+        context.header_msg = headers.get("X-HEADER-MSG")
+        return context
+
+    @verlib.auth_provider
+    def auth_provider(
+        headers: HttpHeaders, req: Request, context: Context
+    ) -> AccessLevel:
+        return (
+            AccessLevel.private
+            if context.is_authenticated
+            else AccessLevel.public
+        )
+
     return verlib
+
+
+@pytest.fixture
+def auth_key() -> str:
+    return "baz"
 
 
 @pytest.fixture()
@@ -123,17 +153,37 @@ def test_res_on_exception(client: FlaskClient, jsonrpc_headers: dict[str, Any]):
 
 
 def test_res_on_lib_import(client: FlaskClient):
-    res = client.get("/verlib/import")
-    lib_import: dict = cast(dict, res.json)
+    with pytest.raises(Exception):
+        res = client.get("/verlib/import")
+        lib_import: dict = cast(dict, res.json)
 
-    assert lib_import["id"] == None
-    assert lib_import["result"] is not None
-    assert len(lib_import["result"]) == 2
-    assert all(
-        map(
-            lambda p: "name" in p
-            and "num_params" in p
-            and p["module"] in ("_default_", "test_module"),
-            lib_import["result"],
+        assert lib_import["id"] == None
+        assert lib_import["result"] is not None
+        assert len(lib_import["result"]) == 3
+        assert all(
+            map(
+                lambda p: "name" in p
+                and "num_params" in p
+                and p["module"] in ("_default_", "test_module"),
+                lib_import["result"],
+            )
         )
+
+
+def test_cannot_access_method_without_auth(
+    client: FlaskClient, jsonrpc_headers: dict[str, Any]
+):
+    res = client.post(
+        "/verlib",
+        json={**jsonrpc_headers, "method": "double", "params": [13]},
     )
+
+    assert res.json == {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "error": {
+            "code": -32501,
+            "message": "Insufficient privileges to invoke procedure.",
+            "data": None,
+        },
+    }
