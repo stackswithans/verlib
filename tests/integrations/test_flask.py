@@ -170,7 +170,7 @@ def test_res_on_lib_import(client: FlaskClient):
         )
 
 
-def test_cannot_access_method_without_auth(
+def test_cannot_access_private_method_without_auth(
     client: FlaskClient, jsonrpc_headers: dict[str, Any]
 ):
     res = client.post(
@@ -186,4 +186,20 @@ def test_cannot_access_method_without_auth(
             "message": "Insufficient privileges to invoke procedure.",
             "data": None,
         },
+    }
+
+
+def test_can_access_private_method_with_auth(
+    client: FlaskClient, jsonrpc_headers: dict[str, Any], auth_key: str
+):
+    res = client.post(
+        "/verlib",
+        json={**jsonrpc_headers, "method": "double", "params": [13]},
+        headers={"X-API-KEY": auth_key},
+    )
+
+    assert res.json == {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": 26,
     }
