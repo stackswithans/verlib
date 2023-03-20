@@ -1,5 +1,6 @@
 import pytest
-from verlib.verlib import VerLib, VerModule, HttpHeaders, Context
+from verlib.verlib import VerLib, VerModule
+from verlib.call import HttpHeaders, Context
 from verlib.verliberr import ErrKind
 from verlib.auth import AccessLevel
 from verlib.jsonrpc import Request, Error, ErrorCode
@@ -325,7 +326,7 @@ def test_verlib_module_allows_call_to_method_auth(
 ):
     res = test_lib.execute_rpc(
         Request(method="test_module.protected_proc", id=1),
-        http_headers={"X-API-KEY": auth_key},
+        http_headers=HttpHeaders({"X-API-KEY": auth_key}),
     )
     assert res.is_success()
     assert res.result_data() == 0
@@ -334,7 +335,9 @@ def test_verlib_module_allows_call_to_method_auth(
 def test_verlib_module_proc_context_works(ctx_lib: VerLib, auth_key: str):
     res = ctx_lib.execute_rpc(
         Request(method="test_module.echo", id=1, params=["World!"]),
-        http_headers={"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello"},
+        http_headers=HttpHeaders(
+            {"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello"}
+        ),
     )
     assert res.is_success()
     assert res.result_data() == "Hello World!"
@@ -345,7 +348,9 @@ def test_verlib_module_proc_context_works_only_argument(
 ):
     res = ctx_lib.execute_rpc(
         Request(method="test_module.echo_2", id=1),
-        http_headers={"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello World!"},
+        http_headers=HttpHeaders(
+            {"X-API-KEY": auth_key, "X-HEADER-MSG": "Hello World!"}
+        ),
     )
     assert res.is_success()
     assert res.result_data() == "Hello World!"
@@ -354,7 +359,7 @@ def test_verlib_module_proc_context_works_only_argument(
 def test_verlib_module_proc_context_fails_if_not_last_arg(ctx_lib: VerLib):
     res = ctx_lib.execute_rpc(
         Request(method="test_module.bad_echo", id=1, params=["World!"]),
-        http_headers={"X-HEADER-MSG": "Hello"},
+        http_headers=HttpHeaders({"X-HEADER-MSG": "Hello"}),
     )
     assert res.is_err()
     err: Error[None] = cast(Error, res.err_data())
@@ -364,7 +369,7 @@ def test_verlib_module_proc_context_fails_if_not_last_arg(ctx_lib: VerLib):
 def test_verlib_module_proc_context_fails_if_not_annotated(ctx_lib: VerLib):
     res = ctx_lib.execute_rpc(
         Request(method="test_module.bad_echo_2", id=1),
-        http_headers={"X-HEADER-MSG": "Hello"},
+        http_headers=HttpHeaders({"X-HEADER-MSG": "Hello"}),
     )
     assert res.is_err()
     err: Error[None] = cast(Error, res.err_data())

@@ -1,6 +1,7 @@
 from verlib.integrations.flask import FlaskVerLib
 from verlib.jsonrpc import Request
-from verlib import VerLib, Context, HttpHeaders
+from verlib import VerLib
+from verlib.call import Context, HttpHeaders
 from verlib.auth import AccessLevel
 
 from flask import Flask
@@ -10,7 +11,7 @@ import pytest
 
 
 @pytest.fixture
-def test_lib() -> VerLib:
+def test_lib(auth_key: str) -> VerLib:
     verlib = VerLib("Testlib")
 
     @verlib.verproc
@@ -24,7 +25,7 @@ def test_lib() -> VerLib:
     @verlib.private_access
     @verlib.verproc
     def double(a: int) -> int:
-        return a**2
+        return a * 2
 
     @verlib.context_builder
     def context_builder(headers: HttpHeaders, req: Request) -> Context:

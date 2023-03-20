@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Callable, Any, ClassVar
 from types import SimpleNamespace
 from verlib.jsonrpc import Request
 from verlib.auth import AccessLevel

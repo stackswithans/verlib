@@ -1,5 +1,6 @@
 from verlib.verlib import VerLib
 from verlib.jsonrpc import Request, ErrRes, OkRes
+from verlib.call import HttpHeaders
 import verlib.jsonrpc as jsonrpc
 import typing
 from flask import Flask, request
@@ -30,7 +31,9 @@ class FlaskVerLib:
             return flask.jsonify(ErrRes(req_id, rpc_req.unwrap_err()))
 
         rpc_call = rpc_req.unwrap()
-        result = self._verlib.execute_rpc(rpc_call)
+        result = self._verlib.execute_rpc(
+            rpc_call, http_headers=HttpHeaders(request.headers)
+        )
 
         if result.is_err():
             return flask.jsonify(

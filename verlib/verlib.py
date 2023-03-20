@@ -4,9 +4,7 @@ import inspect
 from enum import Enum, IntEnum
 from inspect import Signature, BoundArguments, Parameter
 from typing import (
-    Any,
     TypedDict,
-    Mapping,
     Callable,
     ParamSpec,
     TypeVar,
@@ -24,7 +22,7 @@ from verlib.jsonrpc import (
     ErrRes,
 )
 from verlib.auth import AccessLevel
-from types import SimpleNamespace
+from verlib.call import HttpHeaders, Context, ContextBuilder, AuthProvider
 from utils.result import Err, Ok, Result
 
 P = ParamSpec("P")
@@ -33,11 +31,9 @@ T = TypeVar("T", bound=JSONValues)
 
 VerProc = Callable[P, T]
 VerProcParams = JSONValues
-HttpHeaders = Mapping[str, Any]
-Context = SimpleNamespace
-ContextBuilder = Callable[[HttpHeaders, Request], Context]
-AuthProvider = Callable[[HttpHeaders, Request, Context], AccessLevel]
 DecoratedVerProc = Callable[..., VerProc[P, T]] | VerProc[P, T]
+
+_empty_headers: HttpHeaders = HttpHeaders({})
 
 
 class VerProcDesc(TypedDict):
@@ -299,7 +295,7 @@ class VerLib:
         return f
 
     def execute_rpc(
-        self, req: Request, http_headers: HttpHeaders = {}
+        self, req: Request, http_headers: HttpHeaders = _empty_headers
     ) -> Response[JSONValues, None]:
         # Check if module and method both exist
         module, proc_name = self._resolve_proc(req.method)
